@@ -1,0 +1,23 @@
+#the objective of this makefile is to compile using the newlib we built
+#and it works
+NEWLIB =
+CC       = arm-none-eabi-g++
+CFLAGS   = -ffunction-sections -fdata-sections -fno-strict-aliasing -Wall -mthumb -mcpu=cortex-m4 -lfltk
+LDFLAGS  = -nostdlib -nostartfiles -mcpu=cortex-m4 -T kernelpayload.ld -mcpu=cortex-m4 -mthumb -Wl,--gc-sections
+LDFLAGS += -L../newlib-2.2.0.20150623/bld/arm-none-eabi/newlib/ -lm -lc
+
+all: tester
+
+tester: main.o interface.o
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+main.o: main.c interface.h
+	$(CC) -c $(CFLAGS) $<
+
+interface.o: interface.c interface.h
+	$(CC) -c $(CFLAGS) $<
+
+.PHONY: clean
+
+clean:
+	rm *.o tester
