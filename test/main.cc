@@ -1,19 +1,22 @@
 #include <stdio.h>
 #include "interface.h"
+#include <functional>
+#include "libstorm.h"
 #include "SEGGER_RTT.h"
-static void _Delay(int period) {
-  uint32_t i = 100000*period;
-  do { ; } while (i--);
-}
-extern "C" {
-extern int _write(int fd, const void *buf, uint32_t count);
-}
+
+using namespace storm;
+
 int main() {
-  while(1) {
-    SEGGER_RTT_printf(0, "Hello world\n");
-    _write(0,"hi\n",3);
-    printf("hello world");
-    fflush(stdout);
-    _Delay(100);
-  }
+  tq::add([]{
+    printf("hello world (from tq lambda)\n");
+  });
+  int count = 0;
+  std::shared_ptr<storm::Timer> t = Timer::periodic(3*Timer::SECOND, [&]{
+    printf("count is %d\n", count);
+    count++;
+    if (count == 10) {
+      t->cancel();
+    }
+  });
+  tq::scheduler();
 }

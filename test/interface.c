@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 extern "C" {
 //------------------------------
@@ -32,6 +33,10 @@ int _isatty(int fd)
         return 1;
     }
     return 0;
+}
+int _open(const char* path, int flags, ...)
+{
+  return -1;
 }
 int _write(int fd, const void *buf, uint32_t count)
 {
@@ -87,7 +92,7 @@ extern uint32_t _szero;
 extern uint32_t _ezero;
 extern uint32_t _sstack;
 extern uint32_t _estack;
-
+void *__dso_handle = 0;
 extern void __libc_init_array();
 extern int main();
 
@@ -119,11 +124,12 @@ void __attribute__((used)) _start2()
 	for (pDest = &_szero; pDest < &_ezero;) *pDest++ = 0;
 
   __libc_init_array();
-
-    #if 0
+  #if 0
+  char* ptr;
     //This is a libc sanity check, many problems with malloc/stacks
     //and weak symbol overrides are caught by this
     printf("==[TESTSUITE_STARTING]==\n");
+
     {
         int x = 5;
         int y = -5;
@@ -134,8 +140,8 @@ void __attribute__((used)) _start2()
     }
     {
         printf("Test malloc\n");
-        ptr = malloc(512);
-        printf(" > 0x%08x\n", (uint32_t)ptr);
+        ptr = (char*)malloc(512);
+        printf(" > 0x%08x\n", (unsigned int)ptr);
         if (ptr == 0)
         {
             printf("Malloc fail\n");
@@ -143,22 +149,22 @@ void __attribute__((used)) _start2()
         }
     }
     {
-        volatile unsigned int x = 5;
-        volatile int y = -5;
-        volatile float z = 2.34;
-        volatile char *s = "hello world";
+        unsigned int x = 5;
+        int y = -5;
+        float z = 2.34;
+        char *s = "hello world";
         printf("Test snprintf\n");
-        snprintf(ptr, 500, "%u %d %.2f '%s'\n", x, y, z, s);
+        snprintf(ptr, 500, "%u %d %.2f '%s'\n", x, y, z, (char*)s);
         printf(" > %s\n", ptr);
     }
     {
-        volatile unsigned int x = 5;
-        volatile int y = -5;
-        volatile float z = 2.34;
-        volatile char *s = "hello world";
+        unsigned int x = 5;
+        int y = -5;
+        float z = 2.34;
+        char *s = "hello world";
         char stackbuf[512];
         printf("Test stack snprintf\n");
-        snprintf(stackbuf, 500, "%u %d %.2f '%s'\n", x, y, z, s);
+        snprintf(stackbuf, 500, "%u %d %.2f '%s'\n", x, y, z, (char*)s);
         printf(" > %s\n", stackbuf);
     }
     {
@@ -182,8 +188,7 @@ void __attribute__((used)) _start2()
     }
     printf("==[TESTSUITE COMPLETE]==\n");
     #endif
-
-    printf("Booting payload 4.0:");
+    printf("Booting payload 4.0:\n");
     main();
 
     // It's not technically the end of the world if main exits
