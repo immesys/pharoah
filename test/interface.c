@@ -40,7 +40,7 @@ int _open(const char* path, int flags, ...)
 }
 int _write(int fd, const void *buf, uint32_t count)
 {
-    k_write(fd, (const uint8_t*) buf, count);
+    k_write(1, (const uint8_t*) buf, count);
     return count;
 }
 int _close(int fd)

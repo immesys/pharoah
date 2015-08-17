@@ -3,6 +3,8 @@
 #include "libstorm.h"
 #include <array>
 #include <queue>
+#include <cstring>
+
 namespace storm
 {
   namespace tq
@@ -131,7 +133,7 @@ namespace storm
     void tmr_callback(Timer *self);
   }
 
-  
+
   template<> std::shared_ptr<Timer> Timer::once(uint32_t ticks, std::shared_ptr<std::function<void(void)>> callback)
   {
     auto rv = std::shared_ptr<Timer>(new Timer(false, ticks, callback));
@@ -178,22 +180,99 @@ namespace storm
     {
       self->fire();
     }
+    struct udp_recv_params_t
+    {
+        uint32_t reserved1;
+        uint32_t reserved2;
+        uint8_t* buffer;
+        uint32_t buflen;
+        uint8_t src_address [16];
+        uint32_t port;
+        uint8_t lqi;
+        uint8_t rssi;
+    } __attribute__((__packed__));
+  }
+  namespace sys
+  {
+    uint32_t now()
+    {
+      return _priv::syscall_ex(0x202);
+    }
+    uint32_t now(Shift shift)
+    {
+      return _priv::syscall_ex(shift.code);
+    }
+    const Shift SHIFT_0 = {0x202};
+    const Shift SHIFT_16 = {0x203};
+    const Shift SHIFT_48 = {0x204};
+  }
+
+  template<> std::shared_ptr<UDPSocket> UDPSocket::open(uint16_t port, std::shared_ptr<std::function<void(std::shared_ptr<UDPSocket::Packet>)>> callback)
+  {
+    auto rv = std::shared_ptr<UDPSocket>(new UDPSocket(port, callback));
+    if (!rv->okay)
+    {
+      return std::shared_ptr<UDPSocket>();
+    }
+    rv->self = rv; //Circle reference, we cannot be deconstructed
+    return rv;
+  }
+  void UDPSocket::close()
+  {
+    if(self)
+    {
+      //TODO purge callbacks from tq
+      _priv::syscall_ex(0x303, id);
+      self.reset();
+    }
+  }
+  void UDPSocket::_handle(_priv::udp_recv_params_t *recv, char *addrstr)
+  {
+    auto rv = std::make_shared<Packet>();
+    rv->payload = std::string(reinterpret_cast<const char*>(recv->buffer), static_cast<size_t>(recv->buflen));
+    rv->strsrc = std::string(addrstr);
+    std::memcpy(rv->src, recv->src_address, 16);
+    rv->port = recv->port;
+    rv->lqi = recv->lqi;
+    rv->rssi = recv->rssi;
+    (*callback)(rv);
+  }
+  UDPSocket::UDPSocket(uint16_t port, std::shared_ptr<std::function<void(std::shared_ptr<UDPSocket::Packet>)>> callback)
+    :okay(false), callback(callback)
+  {
+    //create
+    id = (int32_t) _priv::syscall_ex(0x301);
+    if (id == -1) {
+      return;
+    }
+    //bind
+    int rv = _priv::syscall_ex(0x302, id, port);
+    if (rv == -1) {
+      return;
+    }
+    rv = _priv::syscall_ex(0x305, id, static_cast<void(*)(UDPSocket*, _priv::udp_recv_params_t*, char*)>(_priv::udp_callback), this);
+    if (rv == -1) {
+      return;
+    }
+    okay = true;
+  }
+  bool UDPSocket::sendto(const std::string &addr, uint16_t port, const std::string &payload)
+  {
+    return sendto(addr, port, reinterpret_cast<const uint8_t*>(&payload[0]), payload.size());
+  }
+  bool UDPSocket::sendto(const std::string &addr, uint16_t port, const uint8_t *payload, size_t length)
+  {
+    int rv = _priv::syscall_ex(0x304, id, payload, length, addr.data(), port);
+    return rv == 0;
+  }
+  namespace _priv
+  {
+    void udp_callback(UDPSocket *sock, udp_recv_params_t *recv, char *addrstr)
+    {
+      sock->_handle(recv, addrstr);
+    }
   }
   #if 0
-  #define simplegpio_set_mode(dir,pinspec) k_syscall_ex_ri32_u32_u32(0x101,(dir),(pinspec))
-  #define simplegpio_set(value,pinspec) k_syscall_ex_ri32_u32_u32(0x102,(value),(pinspec))
-  #define simplegpio_get(pinspec) k_syscall_ex_ri32_u32(0x103,(pinspec))
-  #define simplegpio_set_pull(dir,pinspec) k_syscall_ex_ri32_u32_u32(0x104, (dir),(pinspec))
-  #define simplegpio_getp(pinspec) k_syscall_ex_ri32_u32(0x105,(pinspec))
-  #define simplegpio_enable_irq(pinspec, flag, cb, r) k_syscall_ex_ri32_u32_u32_cb_vptr(0x106,(pinspec),(flag), (cb), (r))
-  #define simplegpio_disable_irq(pinspec) k_syscall_ex_ri32_u32(0x107, (pinspec))
-
-  //----------- TIMER
-  #define timer_set(ticks,periodic, callback, r) k_syscall_ex_ri32_u32_u32_cb_vptr(0x201, (ticks), (periodic), (callback),(r))
-  #define timer_getnow() k_syscall_ex_ru32(0x202)
-  #define timer_getnow_s16() k_syscall_ex_ru32(0x203)
-  #define timer_getnow_s48() k_syscall_ex_ru32(0x204)
-  #define timer_cancel(id) k_syscall_ex_ri32_u32(0x205, (id))
 
   //---------- UDP
   #define udp_socket() k_syscall_ex_ri32(0x301)
