@@ -1,0 +1,102 @@
+desc: (none)
+cmd: ./tester
+time_unit: i
+#-----------
+snapshot=0
+#-----------
+time=0
+mem_heap_B=0
+mem_heap_extra_B=0
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=1
+#-----------
+time=1874511
+mem_heap_B=72704
+mem_heap_extra_B=8
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=2
+#-----------
+time=1877742
+mem_heap_B=72768
+mem_heap_extra_B=16
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=3
+#-----------
+time=1877887
+mem_heap_B=73280
+mem_heap_extra_B=24
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=4
+#-----------
+time=1878356
+mem_heap_B=73344
+mem_heap_extra_B=32
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=5
+#-----------
+time=1878501
+mem_heap_B=73856
+mem_heap_extra_B=40
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=6
+#-----------
+time=1880164
+mem_heap_B=73856
+mem_heap_extra_B=40
+mem_stacks_B=0
+heap_tree=peak
+n3: 73856 (heap allocation functions) malloc/new/new[], --alloc-fns, etc.
+ n1: 72704 0x4EB826E: ??? (in /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.21)
+  n1: 72704 0x4010138: call_init.part.0 (dl-init.c:78)
+   n1: 72704 0x4010221: _dl_init (dl-init.c:36)
+    n0: 72704 0x4001308: ??? (in /lib/x86_64-linux-gnu/ld-2.19.so)
+ n1: 1024 0x40185C: __gnu_cxx::new_allocator<storm::tq::Task>::allocate(unsigned long, void const*) (new_allocator.h:104)
+  n1: 1024 0x401751: std::_Deque_base<storm::tq::Task, std::allocator<storm::tq::Task> >::_M_allocate_node() (stl_deque.h:538)
+   n1: 1024 0x40138D: std::_Deque_base<storm::tq::Task, std::allocator<storm::tq::Task> >::_M_create_nodes(storm::tq::Task**, storm::tq::Task**) (stl_deque.h:632)
+    n1: 1024 0x400F04: std::_Deque_base<storm::tq::Task, std::allocator<storm::tq::Task> >::_M_initialize_map(unsigned long) (stl_deque.h:606)
+     n0: 1024 in 2 places, all below massif's threshold (01.00%)
+ n0: 128 in 1 place, below massif's threshold (01.00%)
+#-----------
+snapshot=7
+#-----------
+time=1880164
+mem_heap_B=73344
+mem_heap_extra_B=32
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=8
+#-----------
+time=1880274
+mem_heap_B=73280
+mem_heap_extra_B=24
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=9
+#-----------
+time=1883560
+mem_heap_B=72768
+mem_heap_extra_B=16
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=10
+#-----------
+time=1883670
+mem_heap_B=72704
+mem_heap_extra_B=8
+mem_stacks_B=0
+heap_tree=empty
