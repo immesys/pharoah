@@ -101,21 +101,22 @@ namespace storm
         body = callable;
       }*/
 
-
+/*
       static auto value(vOutType... args)
       {
         auto rv = Future<in<>, out<vOutType...>, err<>>();
         rv._value = std::make_tuple(args...);
         return rv;
-      }
+      }*/
       //If we are a bound future
-      template <bool B = bound, bool P = sizeof...(vInType)==0, typename std::enable_if<B && !P>::type* = nullptr>
+      template <bool B = bound, typename std::enable_if<B>::type* = nullptr>
       void run()
       {
+        //printf("are bound\n");
         //TODO use gens
       }
       // or there are no in parameters, declare a void run()
-      template <bool B = bound, bool P = sizeof...(vInType)==0, typename std::enable_if<!B>::type* = nullptr>
+      template <bool B = bound, typename std::enable_if<!B>::type* = nullptr>
       void run(vInType... args)
       {
         if (passthru)
@@ -141,6 +142,35 @@ namespace storm
         (*body)(acceptfun, rejectfun, args...);
 
       }
+      //These bind methods allow future N-1 to not know the full type
+      //of promise N at construction time.
+      //Bind the accept function
+      void bindaccept(std::function<void(vInType...)> &f)
+      {
+        //we can bind by reference because the previous future
+        //will stop the next future from being destructed
+        f = [this](vInType... args){
+          this->run(args...);
+        };
+      }
+      //Bind the forward function (reject to a non-handling future)
+      void bindforward(std::function<void(void)> &f)
+      {
+        f = /*std::function<void(vInType...)>*/[this](){
+          if (this->isError)
+          {
+            (*(this->body))();
+          }
+          else
+          {
+            if (this->nxtForward)
+            {
+              this->nxtForward();
+            }
+            //TODO maybe crash hard on uncaught error?
+          }
+        };
+      }
       template <class T> auto then(T lambda)
       {
         //Split the lambda
@@ -150,6 +180,9 @@ namespace storm
         typedef typename decltype(nxtfuture)::acceptfun_t afun;
         typedef typename decltype(nxtfuture)::rejectfun_t rfun;
         nxtfuture.body = std::make_shared<std::function<void(afun, rfun, vOutType...)>>(lambda);
+        nxtfuture.bindaccept(nxtAccept);
+        nxtfuture.bindforward(nxtForward);
+        return nxtfuture;
       }
 /*
       auto makeBindAccept()
@@ -209,9 +242,12 @@ namespace storm
       std::tuple<vOutType...> _value;
       std::tuple<vErrType...> _errvalue;
       std::shared_ptr<AbstractFuture> onAccept;
-      std::unique_ptr<std::function<void(vOutType...)>> bindAcceptFun;
+      std::function<void(vOutType...)> nxtAccept;
+      std::function<void(vErrType...)> nxtReject;
+      std::function<void(void)> nxtForward;
       bool complete;
       bool accepted;
+      bool isError;
       bool passthru = true;
     };
 
@@ -230,11 +266,16 @@ namespace storm
     */
     template<class ... Tz> auto bound(Tz ...args)
     {
-      return Future<in<>, out<Tz...>, err<>, true>::value(args...);
+      auto rv = Future<in<>, out<Tz...>, err<>, true>();
+      rv._value = std::make_tuple(args...);
+      rv.passthru = true;
+      return rv;
     }
     template<class ... Tz> auto unbound()
-    { //this is not what i intended yet.
-      return Future<in<>, out<Tz...>, err<>, false>();
+    {
+      auto rv = Future<in<Tz...>, out<Tz...>, err<>, false>();
+      rv.passthru = true;
+      return rv;
     }
   }
   namespace tq

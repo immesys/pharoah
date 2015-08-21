@@ -17,3 +17,25 @@
 --disable-newlib-supplied-syscalls \
 --enable-lite-exit \
 --enable-newlib-nano-formatted-io
+
+
+../configure --target=arm-none-eabi \
+--disable-newlib-nano-malloc \
+--disable-newlib-supplied-syscalls \
+--disable-newlib-io-pos-arg \
+--disable-newlib-io-c99-formats \
+--disable-newlib-io-long-long \
+--disable-newlib-io-long-double \
+--disable-newlib-register-fini \
+--disable-newlib-mb \
+--disable-newlib-atexit-dynamic-alloc \
+--enable-newlib-global-atexit \
+--enable-newlib-reent-small \
+--disable-newlib-fvwrite-in-streamio \
+--disable-newlib-wide-orient \
+--disable-newlib-unbuf-stream-opt \
+--disable-newlib-multithread \
+--disable-newlib-supplied-syscalls \
+--enable-lite-exit \
+--enable-malloc-debugging \
+--enable-newlib-nano-formatted-io

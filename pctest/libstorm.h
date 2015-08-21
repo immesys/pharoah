@@ -33,7 +33,26 @@ namespace storm
       {
           typedef out<AcceptSig...> accept_type;
           typedef err<RejectSig...> reject_type;
+          typedef in<Args...> args_type;
       };
+
+      //Taken from http://stackoverflow.com/questions/7943525/
+      //roughly
+      //also a good way if we need to store/retrieve the params
+      //http://stackoverflow.com/questions/4691657/
+      template <typename T>
+      struct efunction_traits
+          : public efunction_traits<decltype(&T::operator())>
+      {};
+      // For generic types, directly use the result of the signature of its 'operator()'
+
+      template <typename ClassType, typename ReturnType, typename... Args>
+      struct efunction_traits<ReturnType(ClassType::*)(Args...) const>
+      // we specialize for pointers to member function
+      {
+          typedef err<Args...> args_type;
+      };
+
       //taken from http://stackoverflow.com/questions/7858817/
       //and http://stackoverflow.com/questions/15537817/
       template < ::std::size_t... Indices>
@@ -83,20 +102,12 @@ namespace storm
     public:
       typedef std::function<void(vOutType...)> acceptfun_t ;
       typedef std::function<void(vErrType...)> rejectfun_t ;
-      Future() = default;
-      /*
-      Future(std::shared_ptr<std::function<void(acceptfun_t, rejectfun_t, vInType...)>> callable)
-      {
-        body = callable;
-      }*/
+      typedef in<vInType...> in_t;
+      typedef out<vOutType...> out_t;
+      typedef err<vErrType...> err_t;
 
-/*
-      static auto value(vOutType... args)
-      {
-        auto rv = Future<in<>, out<vOutType...>, err<>>();
-        rv._value = std::make_tuple(args...);
-        return rv;
-      }*/
+      Future() = default;
+
       //If we are a bound future
       template <bool B = isBound, bool P = isPassthru, typename std::enable_if<B>::type* = nullptr>
       void run()
@@ -137,6 +148,7 @@ namespace storm
           complete = true;
           accepted = false;
           if(nxtReject) nxtReject(args...);
+          else nxtForward();
           //onReject(args...);
         };
         body(acceptfun, rejectfun, args...);
@@ -189,8 +201,8 @@ namespace storm
       {
         //Split the lambda
         typedef priv::function_traits<T> traits;
+        static_assert(std::is_same<typename traits::args_type, in<vOutType...>>::value, "Future arguments don't match previous future output");
         auto nxtfuture = std::make_shared<Future<in<vOutType...>, typename traits::accept_type, typename traits::reject_type, false, false, false>>();
-        nxtfuture->passthru = false;
         nxtfuture->body = lambda;
         nxtfuture->bindaccept(nxtAccept);
         nxtfuture->bindforward(nxtForward);
@@ -199,13 +211,15 @@ namespace storm
       }
       template <class T, class E> auto then(T const &lambda, E const &ehandler)
       {
+
         //Split the lambda
         typedef priv::function_traits<T> Ttraits;
         //typedef priv::function_traits<E> Etraits;
 
+        static_assert(std::is_same<typename Ttraits::args_type, in<vOutType...>>::value, "Future arguments don't match previous future output");
+
         //ACCEPT future
         auto nxtfuture = std::make_shared<Future<in<vOutType...>, typename Ttraits::accept_type, typename Ttraits::reject_type, false, false, false>>();
-        nxtfuture->passthru = false;
         nxtfuture->body = lambda;
         nxtfuture->bindaccept(nxtAccept);
         nxtfuture->bindforward(nxtForward);
@@ -213,106 +227,47 @@ namespace storm
 
         //REJECT future
         auto rejfuture = std::make_shared<Future<in<vErrType...>, out<>, err<>, false, true, false>>();
-        rejfuture->passthru = false;
         rejfuture->errbody = ehandler;
         rejfuture->bindreject(nxtReject);
         nxtE = rejfuture;
 
         return nxtfuture;
       }
-/*
-      auto makeBindAccept()
+      template <class E> void except(E const &lambda)
       {
-        return std::make_unique<std::function<void(vInType...)>>([&](vInType... args){
-          run(args...);
-        });
-      }*/
-      //this was an attempt at trying to get then() to take a closure.
-      //problem is that you need to know what the out type is.
-      //its apparently difficult to do the double param pack
-      //method with a function
+        typedef priv::efunction_traits<E> etraits;
+        static_assert(std::is_same<typename etraits::args_type, err<>>::value, "Catch lambda is not void");
 
-      //idea: use a class or whatever, but if you make the lambda
-      //pass in specific types for accept and reject in the parameters
-      //you can probably auto deduce them.
-      //maybe do this for the promise constructor, and make then
-      //forward everything as one giant pack list to the promise constructor?
-      //i think that'll work.
-      /*
-      template <class, class, class T> auto then(T target);
-      template <
-        template< class... > class nOut, class... nOutType,
-        template< class... > class nErr, class... nErrType,
-          class T
-        > auto then< nOut<nOutType...>, nErr<nErrType...>, T> (T target)
-      {
-        //auto rv = std::make_shared<Future<in<vOutType...>, out<>, R>>();
-      //  auto nxt = wrap(target);
-      //  onAccept = nxt;
-      //  auto bar = nxt->makeBindAccept();
-    //    bindAcceptFun = nxt->makeBindAccept();
-        //std::function<void(vOutType...)> afun = (*nxt).run;
-        //onAcceptFun = std::make_shared<std::function<void(vOutType...)>>(std::bind(&nxt->run, nxt));
+        auto nxtfuture = std::make_shared<Future<in<>, out<>, err<>, false, true, false>>();
+        nxtfuture->errbody = lambda;
+        nxtfuture->bindforward(nxtForward);
+        nxtF = nxtfuture;
       }
-      */
-      #if 0
-      //Otherwise, if we are not bound and there are in parameters, declare run with params
-      template <bool B = isBound, bool P = sizeof...(vInType)==0, typename std::enable_if<!(B||P)>::type* = nullptr>
-      void run(vInType... args)
-      {
 
-      }
-      #endif
-      /*
-      template <class T, class R=out<>> auto wrap(T target)
-      {
-
-        rv->body = std::make_shared<std::function<void(acceptfun_t, rejectfun_t, vOutType...)>>(target);
-        return rv;
-      }*/
-
-      //template<class A> auto then(A accept);
-      //template<class A, class R> auto then(A accept, R reject);
-//    private:
       std::function<void(acceptfun_t, rejectfun_t, vInType...)> body;
       std::function<void(vInType...)> errbody;
       std::tuple<vOutType...> _value;
       std::tuple<vErrType...> _errvalue;
       std::shared_ptr<AbstractFuture> nxt;
       std::shared_ptr<AbstractFuture> nxtE;
+      std::shared_ptr<AbstractFuture> nxtF;
       std::function<void(vOutType...)> nxtAccept;
       std::function<void(vErrType...)> nxtReject;
       std::function<void(void)> nxtForward;
       bool complete;
       bool accepted;
       bool isError;
-      bool passthru = true;
     };
 
-
-    /*
-    template <class vOut, class vErr, class T, class vIn, class ... vInZ > auto resolve(const std::function<void(vOut, vErr, vInZ...)>& callable)
-    {
-      auto rv = Future<in<vInZ...>, vOut, vErr, false>();
-      //decltype(rv)::foobaz();
-      //std::function<void(std::function<void(void)>, std::function<void(void)>, int)> a = std::function<void(std::function<void(void)>, std::function<void(void)>, int)>(callable);
-    //  auto a = std::function<void(decltype(rv)::acceptfun_t, decltype(rv)::rejectfun_t, int)>(callable);
-      //rv.body = std::make_shared<>(callable);
-
-      return rv;
-    }
-    */
     template<class ... Tz> auto bound(Tz ...args)
     {
       auto rv = std::make_shared<Future<in<>, out<Tz...>, err<>, true, false, true>>();
       rv->_value = std::make_tuple(args...);
-      rv->passthru = true;
       return rv;
     }
     template<class ... Tz> auto unbound()
     {
       auto rv = std::make_shared<Future<in<Tz...>, out<Tz...>, err<>, false, false, true>>();
-      rv->passthru = true;
       return rv;
     }
   }
@@ -336,5 +291,3 @@ namespace storm
   }
 
 }
-
-//#define udp_sendto(sockid, buffer, bufferlen, addr, port) k_syscall_ex_ri32_cptr_u32_cptr_u32(0x304, (sockid), (buffer), (bufferlen), (addr), (port))

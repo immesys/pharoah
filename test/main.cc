@@ -14,14 +14,15 @@ future::Future<future::in<>, future::out<int>> dummycall()
 #endif
 int main() {
 
-  /*
-  auto f = future::bound(5, 6, 7);
-  f.then([](future::accept<> aa, future::reject<> bb, int a, int b, int c)
+
+  //auto f = future::bound(5, 6, 7);
+  auto f = future::unbound<int, int, int>();
+  f.then([](future::accept<int, int> aa, future::reject<int> bb, int a, int b, int c)
   {
     printf("got %d %d %d\n", a, b, c);
   });
-  f.run();
-  */
+  f.run(5,6,7);
+
 
 
   //auto f2 = future::Future().then([])
@@ -49,7 +50,7 @@ int main() {
   //future::wrap()
   /*
   auto f2 = future::Future<>
-//  <future::in<int,int,int>, future::out<int>, future::err<int>>
+  <future::in<int,int,int>, future::out<int>, future::err<int>>
   ([](future::accept<int> aa, future::reject<int> bb, int a, int b, int c)
   {
     printf("got %d %d %d\n", a, b, c);
