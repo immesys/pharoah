@@ -7,6 +7,29 @@
 
 namespace storm
 {
+  std::unique_ptr<uint8_t[]> mkbuf(size_t size)
+  {
+    return buf_t(new uint8_t[size]);
+  }
+  std::unique_ptr<uint8_t[]> mkbuf(std::initializer_list<uint8_t> contents)
+  {
+    auto rv = buf_t(new uint8_t[contents.size()]);
+    int idx = 0;
+    for (auto v : contents) rv[idx++] = v;
+    return rv;
+  }
+  namespace _priv
+  {
+    uint32_t __attribute__((naked)) syscall_ex(...)
+    {
+      asm volatile (\
+          "push {r4-r11}\n\t"\
+          "svc 8\n\t"\
+          "pop {r4-r11}\n\t"\
+          "bx lr":::"memory", "r0");
+    }
+    void irq_callback(uint32_t idx);
+  }
   namespace tq
   {
     void Task::fire()
@@ -38,18 +61,7 @@ namespace storm
       }
     }
   }
-  namespace _priv
-  {
-    uint32_t __attribute__((naked)) syscall_ex(...)
-    {
-      asm volatile (\
-          "push {r4-r11}\n\t"\
-          "svc 8\n\t"\
-          "pop {r4-r11}\n\t"\
-          "bx lr":::"memory", "r0");
-    }
-    void irq_callback(uint32_t idx);
-  }
+
 
   namespace gpio
   {
@@ -202,6 +214,10 @@ namespace storm
     {
       return _priv::syscall_ex(shift.code);
     }
+    void reset()
+    {
+      _priv::syscall_ex(0x404);
+    }
     const Shift SHIFT_0 = {0x202};
     const Shift SHIFT_16 = {0x203};
     const Shift SHIFT_48 = {0x204};
@@ -270,6 +286,17 @@ namespace storm
     void udp_callback(UDPSocket *sock, udp_recv_params_t *recv, char *addrstr)
     {
       sock->_handle(recv, addrstr);
+    }
+  }
+  namespace _priv
+  {
+    void i2c_wcallback(i2c::I2CWOperation *op, int status)
+    {
+      op->invoke(status);
+    }
+    void i2c_rcallback(i2c::I2CROperation *op, int status)
+    {
+      op->invoke(status);
     }
   }
   #if 0

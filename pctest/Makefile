@@ -15,9 +15,6 @@ main.o: main.cc
 libstorm.o: libstorm.cc libstorm.h
 	$(CC) -c $(CFLAGS) $<
 
-install:
-	sload program tester
-
 .PHONY: clean
 
 clean:
