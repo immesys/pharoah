@@ -82,7 +82,6 @@ namespace storm
       };
       template <typename ClassType, typename ...AcceptSig, typename ...RejectSig, typename... Args>
       struct lambda_traits<Multi<AcceptSig...>(ClassType::*)(reject<RejectSig...>, Args...) const>
-      // we specialize for pointers to member function
       {
           typedef in<Args...> args_type;
           typedef out<AcceptSig...> accept_type;
@@ -95,7 +94,6 @@ namespace storm
       };
       template <typename ClassType, typename AcceptSig, typename ...RejectSig, typename... Args>
       struct lambda_traits<AcceptSig(ClassType::*)(reject<RejectSig...>, Args...) const>
-      // we specialize for pointers to member function
       {
           typedef typename std::is_same<void, AcceptSig> isvoid;
 
@@ -110,7 +108,6 @@ namespace storm
       };
       template <typename ClassType, typename ...AcceptSig, typename... Args>
       struct lambda_traits<Multi<AcceptSig...>(ClassType::*)(Args...) const>
-      // we specialize for pointers to member function
       {
           typedef in<Args...> args_type;
           typedef out<AcceptSig...> accept_type;
@@ -123,7 +120,6 @@ namespace storm
       };
       template <typename ClassType, typename AcceptSig, typename... Args>
       struct lambda_traits<AcceptSig(ClassType::*)(Args...) const>
-      // we specialize for pointers to member function
       {
           typedef typename std::is_same<void, AcceptSig> isvoid;
 
