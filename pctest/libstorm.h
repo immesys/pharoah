@@ -4,8 +4,6 @@
 #include <stdio.h>
 namespace storm
 {
-  //this namespace contains dragons. I don't know how the fuck any of this shit works
-  //and I wrote it.
   namespace future
   {
     //TODO replace these with custom classes to prevent functions in the signature
